@@ -1,0 +1,2442 @@
+■ [쉬움주의] 유방암 데이터의 악성종양을 knn 으로 분류하기
+
+유방암 데이터:  R을 활용한 머신러닝 -에이콘 출판사
+
+wisc_bc_data.csv
+
+파이썬 코드 전체: 
+
+# ■ [쉬움주의] 유방암 데이터의 악성종양을 knn 으로 분류하기
+
+import pandas as pd  # 데이터 전처리를 위해서 
+import seaborn as sns # 시각화를 위해서 
+
+df = pd.read_csv("d:\\data\\wisc_bc_data.csv") 
+# 설명: R 과는 다르게 stringsAsFactors=True 를 지정하지 않아도 됩니다.
+print(df) 
+
+# DataFrame 확인
+print(df.shape)   # (569, 32)  569행 32열 
+print(df.info())  # R 의 str(df) 의 결과와 유사합니다. 데이터 구조를 확인합니다. 
+print(df.describe()) # R 에서의 summary(df) 의 결과와 유사합니다.  요약 통계정보 
+
+# 행을 선택하는 방법  emp[행][열]  ---> emp[조건][컬럼명]
+print(df.iloc[0:5, ])  #  0~4번째 행을 가져와라~ df.iloc[행번호, 열번호]
+print(df.iloc[-5: ,])   #  끝에서 5번째 행부터 끝까지 가져와라 
+
+# 열을 선택하는 방법  emp[행][열] ---> emp[조건][ c("ename","sal")]
+print(df.iloc[ :, [0,1] ]) #  0번째 열과 1번째 열을 가져와라 ~
+print(df.iloc[ :, : ])  # 전체열 다가져와라 ~
+
+# 판다스 데이터 프레임이 어떻게 구성되었는가 ?
+
+     게시글 19번  [쉬움주의] 판다스 데이터 프레임과 시리즈의 차이
+     numpy 리스트 (일반 리스트)로 컬럼 하나를 구성 --> 시리즈 
+     numpy 리스트 (일반 리스트)로 컬럼 여러개로 구성 --> 데이터 프레임
+
+ R 에서 emp <- read.csv("emp.csv") 
+          str(emp) # 데이터 프레임 
+
+# 데이터 전처리 :  정규화 ---> 훈련과 테스트로 데이터를 분리 
+
+#%%
+
+# X = 전체 행, 마지막 열 제외한 모든 열 데이터 -> n차원 공간의 포인트
+X = df.iloc[:, 2:].to_numpy() # df 데이터 프레임의 2번째 열부터 끝까지를
+                                   # 넘파이 array 로 변환해라 ~
+print(X)
+y = df['diagnosis'].to_numpy()   
+print(df.shape)
+#%%
+            
+
+# 데이터 정규화를 수행한다.     
+#  1. 스케일 (scale)  :  평균은 0이고 표준편차 1인 데이터로 분포 시킴
+#  2. min/max 정규화  :  0 ~ 1 사이의 숫자로 변경
+# 아래의 코드는 min/max 정규화는 아니고 scale 입니다         
+
+from sklearn import preprocessing 
+X=preprocessing.StandardScaler().fit(X).transform(X) 
+print(X) 
+# scale 이 잘되었는지 확인은 아래에 있습니다. 
+
+# 훈련 데이터와 테스트 데이터를 분리하는 작업 
+from sklearn.model_selection import train_test_split 
+                                                                
+# 훈련 데이터 70, 테스트 데이터 30으로 나눈다. 
+X_train, X_test, y_train, y_test = train_test_split(X,y,test_size =0.3, random_state = 10)
+#설명:  test_size=0.3 으로 했기때문에 훈련과 테스트가 7대 3비율로 나뉩니다. 
+#  random_state = 10 은  seed값 설정하는 부분입니다. 
+#  어느자리에서든 동일한 정확도를 보기 위해서입니다. 
+
+print(X_train.shape)  # (398, 30)
+print(y_train.shape)  # (398,  ) 
+
+#%%
+
+# 스케일링(z-score 표준화 수행 결과 확인)
+for col in range(4):
+    print(f'평균 = {X_train[:, col].mean()}, 표준편차= {X_train[:, col].std()}')
+    
+for col in range(4):
+    print(f'평균 = {X_test[:, col].mean()}, 표준편차= {X_test[:, col].std()}')
+# 설명: 평균은 0에 가깝고 표준편차는 1에 가까운 결과가 출력이 되고 있음
+
+# 2교시 신호 보냈습니다. 
+
+# 학습/예측(Training/Pradiction)
+from sklearn.neighbors import KNeighborsClassifier
+
+# k-NN 분류기를 생성
+classifier = KNeighborsClassifier(n_neighbors=5)  # knn 모델 생성 
+
+# 분류기 학습
+classifier.fit(X_train, y_train)  # 훈련 데이터와 훈련 데이터의 라벨로 훈련을 한다. 
+
+# 예측
+y_pred= classifier.predict(X_test)  # 테스트 데이터를 예측한다. 
+print(y_pred)
+
+#%%
+
+# 모델 평가 -- 작은 이원교차표 출력
+from sklearn.metrics import confusion_matrix  
+conf_matrix= confusion_matrix(y_test, y_pred)
+print(conf_matrix)    
+
+[[97  1]
+ [ 5 68]]
+
+# 민감도, 재현율, 정확도, F1 스코아를 확인한다. 
+from sklearn.metrics import classification_report
+report = classification_report(y_test, y_pred)
+print(report)
+
+# 정확도 확인하는 코드 
+from sklearn.metrics import accuracy_score
+accuracy = accuracy_score( y_test, y_pred)
+print(accuracy)
+
+# k 값이 5일때 정확도 0.9649
+
+문제1. 위의 코드에서 적절한 k 값을 알아내는 for 문을 구현하세요.
+
+답:   
+
+문제2.  위에서 알아낸 가장 에러가 낮은 k 값은 7,8,9,10 였습니다.
+          그러면 k 값을 7을 넣었을때의 정확도를 보시오 ~ 
+
+답:
+# k-NN 분류기를 생성
+classifier = KNeighborsClassifier(n_neighbors=7)
+
+설명: 0.97 의 정확도가 나옵니다.  의료 데이터이므로 정확도가 아주 높아야 합니다.
+      그런데 정확도가 100% 가 나오면 좋겠는데 100% 의 정확도가 나오기 어려우므로
+      FN 을 0 으로 만들면 정확도가 100% 가 아니더라도 쓰겠다. 
+      ↓
+    False  Nagative          
+                              관심범주는 positive (암) 이므로 Nagative는 정상환자 입니다. 
+
+                   False  Nagative    --> 정상환자로 잘못 예측했다. 
+
+ 지금 방금했던 시각화는 k 값이 변경될 때 마다 오류가 어떻게 되는지 
+ 2차원 그래프로 시각화 한것이고 
+
+ 이번에는 k 값이 변경될 때마다 FN 값과 정확도가 어떻게 되는지 확인을 해야합니다.
+
+import matplotlib.pyplot as plt
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.model_selection import train_test_split
+from sklearn import metrics
+import numpy as np
+
+acclist = []
+err_list = []
+fn_list = []
+
+for i in range(1,30):
+    knn = KNeighborsClassifier(n_neighbors=i)
+    knn.fit(X_train, y_train)
+    y_pred = knn.predict(X_test)
+
+    tn, fp,fn, tp = metrics.confusion_matrix(y_test, y_pred).ravel()
+    # 설명:  .ravel() 함수를 안쓰면 작은 이원교차표가 나오는데 
+    # .ravel() 을 쓰면 이원교차표의 값들을 출력할 수 있습니다.    
+
+    fn_list.append(fn) 
+    acclist.append(accuracy_score(y_test, y_pred))
+    
+    err_list.append(np.mean(y_pred != y_test))
+
+    print(f'k : {i} , acc : {accuracy_score(y_test, y_pred)} , FN : {fn}')
+
+# 그래프 사이즈 조정하는 부분 
+plt.figure(figsize=(12,6))
+plt.subplots_adjust(left=0.125,
+                    bottom=0.1, 
+                    right=1, 
+                    top=0.9, 
+                    wspace=0.2, 
+                    hspace=0.35)
+
+# K 값이 변경될 때 마다 정확도가 어떻게 되는지 시각화 하는 부분 
+plt.subplot(131)
+plt.plot(acclist,color='blue', marker='o', markerfacecolor='red')
+plt.title('Accuracy', size=15)
+plt.xlabel("k value")
+plt.ylabel('Accuracy')
+
+
+# K 값이 변경될 때 마다 에러가 어떻게 되는지 시각화 하는 부분
+plt.subplot(132)
+plt.plot(err_list, color='red', marker='o', markerfacecolor='blue')
+plt.title('Error', size=15)
+plt.xlabel("k value")
+plt.ylabel('error')
+
+# K 값이 변경될 때 마다 FN 값이 어떻게 되는지 시각화 하는 부분 
+plt.subplot(133)
+plt.plot(fn_list, color='green', marker='o', markerfacecolor='yellow')
+plt.title('FN Value', size=15)
+plt.xlabel("k value")
+plt.ylabel('fn value')
+plt.show()
+
+
+■ [쉬움주의] 유방암 데이터의 악성종양을 knn 으로 분류하기
+
+ 
+
+유방암 데이터:  R을 활용한 머신러닝 -에이콘 출판사
+
+wisc_bc_data.csv
+122.16KB
+파이썬 코드 전체: 
+
+import pandas as pd 
+import seaborn as sns 
+
+df = pd.read_csv("d:\\data\\wisc_bc_data.csv") 
+
+# DataFrame 확인
+print(df.shape)
+print(df.info()) 
+print(df.describe())
+
+print(df.iloc[0:5, ]) 
+print(df.iloc[-5: ,])
+
+print(df.iloc[ :, [0,1] ]) 
+print(df.iloc[ :, : ]) 
+
+#%%
+
+# X = 전체 행, 마지막 열 제외한 모든 열 데이터 -> n차원 공간의 포인트
+X = df.iloc[:, 2:].to_numpy() 
+y = df['diagnosis'].to_numpy()   
+
+print(df.shape)
+                       
+from sklearn import preprocessing 
+X=preprocessing.StandardScaler().fit(X).transform(X) 
+
+from sklearn.model_selection import train_test_split 
+                                                                
+                     
+# 훈련 데이터 70, 테스트 데이터 30으로 나눈다. 
+X_train, X_test, y_train, y_test = train_test_split(X,y,test_size =0.3, random_state = 10)
+
+print(X_train.shape) 
+print(y_train.shape) 
+
+#%%
+
+# 스케일링(z-score 표준화 수행 결과 확인)
+for col in range(4):
+    print(f'평균 = {X_train[:, col].mean()}, 표준편차= {X_train[:, col].std()}')
+    
+for col in range(4):
+    print(f'평균 = {X_test[:, col].mean()}, 표준편차= {X_test[:, col].std()}')
+
+
+# 학습/예측(Training/Pradiction)
+from sklearn.neighbors import KNeighborsClassifier
+
+# k-NN 분류기를 생성
+classifier = KNeighborsClassifier(n_neighbors=5)
+
+# 분류기 학습
+classifier.fit(X_train, y_train)
+
+# 예측
+y_pred= classifier.predict(X_test)
+print(y_pred)
+
+# 모델 평가
+from sklearn.metrics import confusion_matrix
+conf_matrix= confusion_matrix(y_test, y_pred)
+print(conf_matrix)    
+
+# 이원 교차표 보는 코드 
+from sklearn.metrics import classification_report
+report = classification_report(y_test, y_pred)
+print(report)
+
+# 정확도 확인하는 코드 
+from sklearn.metrics import accuracy_score
+accuracy = accuracy_score( y_test, y_pred)
+print(accuracy)
+
+코드 설명 :     
+
+import pandas as pd 
+import seaborn as sns 
+
+df = pd.read_csv("d:\\data\\wisc_bc_data.csv") 
+
+# DataFrame 확인
+print(df.shape)
+print(df.info()) 
+print(df.describe())
+
+print(df.iloc[0:5, ]) 
+print(df.iloc[-5: ,])
+
+print(df.iloc[ :, [0,1] ]) 
+print(df.iloc[ :, : ]) 
+
+#%%
+
+# X = 전체 행, 마지막 열 제외한 모든 열 데이터 -> n차원 공간의 포인트
+X = df.iloc[:, 2:].to_numpy() 
+y = df['diagnosis'].to_numpy()   
+
+print(df.shape)
+                       
+from sklearn import preprocessing 
+X=preprocessing.StandardScaler().fit(X).transform(X) 
+
+from sklearn.model_selection import train_test_split 
+                                                                
+                     
+# 훈련 데이터 70, 테스트 데이터 30으로 나눈다. 
+X_train, X_test, y_train, y_test = train_test_split(X,y,test_size =0.3, random_state = 10)
+
+print(X_train.shape) 
+print(y_train.shape) 
+
+#%%
+
+# 스케일링(z-score 표준화 수행 결과 확인)
+for col in range(4):
+    print(f'평균 = {X_train[:, col].mean()}, 표준편차= {X_train[:, col].std()}')
+    
+for col in range(4):
+    print(f'평균 = {X_test[:, col].mean()}, 표준편차= {X_test[:, col].std()}')
+
+
+# 학습/예측(Training/Pradiction)
+from sklearn.neighbors import KNeighborsClassifier
+
+# k-NN 분류기를 생성
+classifier = KNeighborsClassifier(n_neighbors=5)
+
+# 분류기 학습
+classifier.fit(X_train, y_train)
+
+# 예측
+y_pred= classifier.predict(X_test)
+print(y_pred)
+
+# 모델 평가
+from sklearn.metrics import confusion_matrix
+conf_matrix= confusion_matrix(y_test, y_pred)
+print(conf_matrix)    
+
+# 이원 교차표 보는 코드 
+from sklearn.metrics import classification_report
+report = classification_report(y_test, y_pred)
+print(report)
+
+# 정확도 확인하는 코드 
+from sklearn.metrics import accuracy_score
+accuracy = accuracy_score( y_test, y_pred)
+print(accuracy)
+
+문제1. 위의 코드에서 적절한 k 값을 알아내는 for 문을 구현하세요.
+
+
+답:
+
+import  numpy  as np
+
+errors = []
+for i in range(1, 31):
+    knn = KNeighborsClassifier(n_neighbors = i)
+    knn.fit(X_train, y_train)
+    pred_i = knn.predict(X_test)
+    errors.append(np.mean(pred_i != y_test))
+print(errors)
+
+
+import matplotlib.pyplot as plt
+
+plt.plot(range(1, 31), errors, marker='o')
+plt.title('Mean error with K-Value')
+plt.xlabel('k-value')
+plt.ylabel('mean error')
+plt.show()
+
+ 
+
+ 
+
+문제3. 위의 코드에서 적절한 k 값을 알아내는 for 문을 구현하세요.
+
+ 
+
+
+ 
+
+답:
+
+
+import matplotlib.pyplot as plt
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.model_selection import train_test_split
+from sklearn import metrics
+import numpy as np
+
+
+acclist = []
+err_list = []
+fn_list = []
+
+for i in range(1,30):
+    knn = KNeighborsClassifier(n_neighbors=i)
+    knn.fit(X_train, y_train)
+    y_pred = knn.predict(X_test)
+    tn, fp,fn, tp = metrics.confusion_matrix(y_test, y_pred).ravel()
+    fn_list.append(fn)
+    acclist.append(accuracy_score(y_test, y_pred))
+    err_list.append(np.mean(y_pred != y_test))
+
+    print(f'k : {i} , acc : {accuracy_score(y_test, y_pred)} , FN : {fn}')
+
+plt.figure(figsize=(12,6))
+plt.subplots_adjust(left=0.125,
+                    bottom=0.1, 
+                    right=1, 
+                    top=0.9, 
+                    wspace=0.2, 
+                    hspace=0.35)
+
+plt.subplot(131)
+plt.plot(acclist,color='blue', marker='o', markerfacecolor='red')
+plt.title('Accuracy', size=15)
+plt.xlabel("k value")
+plt.ylabel('Accuracy')
+
+plt.subplot(132)
+plt.plot(err_list, color='red', marker='o', markerfacecolor='blue')
+plt.title('Error', size=15)
+plt.xlabel("k value")
+plt.ylabel('error')
+
+plt.subplot(133)
+plt.plot(fn_list, color='green', marker='o', markerfacecolor='yellow')
+plt.title('FN Value', size=15)
+plt.xlabel("k value")
+plt.ylabel('fn value')
+
+plt.show()
+
+ 
+문제4. iris 데이터를 knn 으로 분류하세요 !
+
+#  iris2.csv 내려받으세요 ~~
+
+import matplotlib.pyplot as plt
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.model_selection import train_test_split
+from sklearn import metrics
+import numpy as np
+import pandas  as pd
+
+# 1. 데이터 준비
+col_names = ['sepal-length', 'sepal-width','petal-length', 'petal-width','Class']
+
+# csv 파일에서 DataFrame을 생성
+dataset = pd.read_csv('d:\\data\\iris2.csv', encoding='UTF-8', header=None, names=col_names)
+print(dataset)
+
+# 아래의 코드 ? 
+
+ 7분의 시간을 줄테니까 구현해보세요 ~~
+
+ iris 데이터를 분류하는 knn 모델을 생성하세요 ~  정확도까지 출력하세요 ~~
+
+ 12시 신호 보냈습니다.  
+
+12시 5분까지 해주세요 ~~
+
+문제5.(점심시간 문제)  iris 데이터에 대해서 가장 정확도가 좋은 k 값을 지정해서 
+        아이리스 데이터를 분류하는 knn 모델을 생성하는 전체 코드를 올리시오 ~
+
+답:
+import matplotlib.pyplot as plt
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.model_selection import train_test_split
+from sklearn import metrics
+import numpy as np
+import pandas  as pd
+
+# 1. 데이터 준비
+col_names = ['sepal-length', 'sepal-width','petal-length', 'petal-width','Class']
+
+# csv 파일에서 DataFrame을 생성
+dataset = pd.read_csv('d:\\data\\iris2.csv', encoding='UTF-8', header=None, names=col_names)
+#print(dataset)
+
+# DataFrame 확인
+print(dataset.shape) # (row개수, column개수)
+print(dataset.info()) # 데이터 타입, row 개수, column 개수, 컬럼 데이터 타입
+print(dataset.describe()) # 요약 통계 정보
+
+print(dataset.iloc[0:5]) # dataset.head()
+print(dataset.iloc[-5:]) # dataset.tail()
+
+# X = 전체 행, 마지막 열 제외한 모든 열 데이터 -> n차원 공간의 포인트
+X = dataset.iloc[:,:-1].to_numpy() # DataFrame을 np.ndarray로 변환
+#print(X)
+
+# 전체 데이터 세트를 학습 세트(training set)와 검증 세트(test set)로 나눔
+# y = 전체 행, 마지막 열 데이터
+y = dataset.iloc[:, 4].to_numpy()
+#print(y)
+
+# 데이터 분리 
+from sklearn.model_selection import train_test_split
+
+# 전체 데이터 세트를 학습 세트(training set)와 검증 세트(test set)로 나눔
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2)
+print(len(X_train), len(X_test))
+
+print(X_train[:3])
+print(y_train[:3])
+
+# 3. 거리 계산을 위해서 각 특성들을 스케일링(표준화)
+# Z-score 표준화: 평균을 0, 표준편차 1로 변환
+
+from sklearn.preprocessing import StandardScaler
+
+# 3. 거리 계산을 위해서 각 특성들을 스케일링(표준화)
+# Z-score 표준화: 평균을 0, 표준편차 1로 변환
+scaler = StandardScaler() # Scaler 객체 생성
+scaler.fit(X_train) # 스케일링(표준화)를 위한 평균과 표준 편차 계산
+X_train = scaler.transform(X_train) # 스케일링(표준화 수행)
+X_test = scaler.transform(X_test)
+
+# 스케일링(z-score 표준화 수행 결과 확인)
+for col in range(4):
+    print(f'평균 = {X_train[:, col].mean()}, 표준편차= {X_train[:, col].std()}')
+    
+for col in range(4):
+    print(f'평균 = {X_test[:, col].mean()}, 표준편차= {X_test[:, col].std()}')    
+
+# 4. 학습/예측(Training/Pradiction)
+from sklearn.neighbors import KNeighborsClassifier
+
+# k-NN 분류기를 생성
+classifier = KNeighborsClassifier(n_neighbors=5)
+
+# 분류기 학습
+classifier.fit(X_train, y_train)
+
+# 예측
+y_pred= classifier.predict(X_test)
+print(y_pred)
+
+#5. 모델 평가
+from sklearn.metrics import confusion_matrix
+conf_matrix= confusion_matrix(y_test, y_pred)
+print(conf_matrix)
+
+# 대각선에 있는 숫자가 정답을 맞춘 것, 그 외가 틀린 것
+
+from sklearn.metrics import classification_report
+report = classification_report(y_test, y_pred)
+print(report)
+
+import numpy as np
+    
+# 6. 모델 개선 - k값을 변화시킬 때, 에러가 줄어드는 지
+errors = []
+for i in range(1, 31):
+    knn = KNeighborsClassifier(n_neighbors = i)
+    knn.fit(X_train, y_train)
+    pred_i = knn.predict(X_test)
+    errors.append(np.mean(pred_i != y_test))
+print(errors)
+
+# 여기서 에러가 가장 적은 것을 선택
+
+import matplotlib.pyplot as plt
+
+plt.plot(range(1, 31), errors, marker='o')
+plt.title('Mean error with K-Value')
+plt.xlabel('k-value')
+plt.ylabel('mean error')
+plt.show()
+
+
+
+
+
+문제6. 유방암 데이터의 정확도를 더 올리기 위해서 정규화를 min max 정규화로 변경하시오
+
+
+ [[98  0]
+ [ 5 68]]
+
+k=12
+기존 정확도:  0.9707602339181286  ----->  0.9883040935672515
+
+# 문제6번을 위한 준비코드:
+# ■ [쉬움주의] 유방암 데이터의 악성종양을 knn 으로 분류하기
+
+import pandas as pd  # 데이터 전처리를 위해서 
+import seaborn as sns # 시각화를 위해서 
+
+df = pd.read_csv("d:\\data\\wisc_bc_data.csv") 
+
+# DataFrame 확인
+#print(df.shape)
+#print(df.info()) 
+#print(df.describe())
+#print(df.iloc[0:5, ])
+#print(df.iloc[-5: ,])
+#print(df.iloc[ :, [0,1] ]) 
+#print(df.iloc[ :, : ]) 
+
+# X = 전체 행, 마지막 열 제외한 모든 열 데이터 -> n차원 공간의 포인트
+X = df.iloc[:, 2:].to_numpy() 
+
+y = df['diagnosis'].to_numpy()   
+#print(y)
+
+#print(df.shape)  # (569, 32)
+#print(len(X))  # 569
+#print(len(y))  # 569
+                       
+from sklearn import preprocessing  
+
+# X=preprocessing.StandardScaler().fit(X).transform(X)  #  scale 함수 적용
+X=preprocessing.MinMaxScaler().fit(X).transform(X)      # min/max 함수 적용 
+# 기존 정확도:  0.9707602339181286  ----->  0.9883040935672515
+# 기존 scale 함수를 이용했을때 보다 정확도가 더 올라갔습니다. 
+# 4교시 신호 보냈습니다. 
+
+from sklearn.model_selection import train_test_split 
+                                                                
+                     
+# 훈련 데이터 70, 테스트 데이터 30으로 나눈다. 
+X_train, X_test, y_train, y_test = train_test_split(X,y,test_size=0.3, random_state = 10)
+
+#print(X_train.shape) 
+#print(y_train.shape) 
+
+
+# 스케일링(z-score 표준화 수행 결과 확인)
+for col in range(4):
+    print(f'평균 = {X_train[:, col].mean()}, 표준편차= {X_train[:, col].std()}')
+    
+for col in range(4):
+    print(f'평균 = {X_test[:, col].mean()}, 표준편차= {X_test[:, col].std()}')
+
+
+
+# 학습/예측(Training/Pradiction)
+from sklearn.neighbors import KNeighborsClassifier
+
+# k-NN 분류기를 생성
+classifier = KNeighborsClassifier(n_neighbors=12)
+
+# 분류기 학습
+classifier.fit(X_train, y_train)
+
+# 예측
+y_pred= classifier.predict(X_test)
+#print(y_pred)
+
+# 작은 이원 교차표 출력
+from sklearn.metrics import confusion_matrix
+conf_matrix= confusion_matrix(y_test, y_pred)
+print(conf_matrix)    
+
+# 정밀도 , 재현율, f1 score 출력 
+from sklearn.metrics import classification_report
+report = classification_report(y_test, y_pred)
+print(report)
+
+# 정확도 확인하는 코드 
+from sklearn.metrics import accuracy_score
+accuracy = accuracy_score( y_test, y_pred)
+print(accuracy)
+
+
+
+
+
+
+
+      
+1. min/max 적용 정확도 
+
+from sklearn import preprocessing 
+
+#X=preprocessing.StandardScaler().fit(X).transform(X) 
+X=preprocessing.MinMaxScaler().fit(X).transform(X) 
+ 
+
+■ 2장. 나이브베이즈를 파이썬으로 구현하기 
+
+  R이 좋은 함수와 패키지가 파이썬 보다 더 많다. (역사가 더 깊다)
+                               
+  파이썬으로 머신러닝을 구현하는 경우가 현업에서는 더 많습니다. 
+
+ 앞에서 knn 으로 머신러닝 구현할때 R 과의 차이점은 ?  factor 로 변환할 필요가
+                                                                          없었다. 
+
+
+import matplotlib.pyplot as plt
+from sklearn.model_selection import train_test_split
+from sklearn import metrics
+import numpy as np
+import pandas  as pd
+
+
+# 1. 데이터 준비
+col_names = ['sepal-length', 'sepal-width','petal-length', 'petal-width','Class']
+
+# csv 파일에서 DataFrame을 생성
+dataset = pd.read_csv('d:\\data\\iris2.csv', encoding='UTF-8', header=None, names=col_names)
+#print(dataset)
+
+# DataFrame 확인
+print(dataset.shape) # (row개수, column개수)
+print(dataset.info()) # 데이터 타입, row 개수, column 개수, 컬럼 데이터 타입
+print(dataset.describe()) # 요약 통계 정보
+
+print(dataset.iloc[0:5]) # dataset.head()
+print(dataset.iloc[-5:]) # dataset.tail()
+
+
+# X = 전체 행, 마지막 열 제외한 모든 열 데이터 -> n차원 공간의 포인트
+X = dataset.iloc[:,:-1].to_numpy() # DataFrame을 np.ndarray로 변환
+#print(X)
+
+# 전체 데이터 세트를 학습 세트(training set)와 검증 세트(test set)로 나눔
+# y = 전체 행, 마지막 열 데이터
+y = dataset.iloc[:, 4].to_numpy()
+#print(y)
+
+# 데이터 분리 
+from sklearn.model_selection import train_test_split
+
+# 전체 데이터 세트를 학습 세트(training set)와 검증 세트(test set)로 나눔
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state = 10)
+print(len(X_train), len(X_test))
+
+print(X_train[:3])
+print(y_train[:3])
+
+# 3. 거리 계산을 위해서 각 특성들을 스케일링(표준화)
+# Z-score 표준화: 평균을 0, 표준편차 1로 변환
+
+from sklearn.preprocessing import StandardScaler
+
+# 3. 거리 계산을 위해서 각 특성들을 스케일링(표준화)
+# Z-score 표준화: 평균을 0, 표준편차 1로 변환
+scaler = StandardScaler() # Scaler 객체 생성
+scaler.fit(X_train) # 스케일링(표준화)를 위한 평균과 표준 편차 계산
+X_train = scaler.transform(X_train) # 스케일링(표준화 수행)
+X_test = scaler.transform(X_test)
+
+# 스케일링(z-score 표준화 수행 결과 확인)
+for col in range(4):
+    print(f'평균 = {X_train[:, col].mean()}, 표준편차= {X_train[:, col].std()}')
+    
+    
+for col in range(4):
+    print(f'평균 = {X_test[:, col].mean()}, 표준편차= {X_test[:, col].std()}')    
+
+# 4. 학습/예측(Training/Pradiction)
+#from sklearn.neighbors import KNeighborsClassifier
+    
+from sklearn.naive_bayes import BernoulliNB
+from sklearn.naive_bayes import GaussianNB
+#model = GaussianNB() # Gaussian Naive Bayes 모델 선택 - 연속형 자료
+
+#model = GaussianNB(var_smoothing=1e-09) # Gaussian Naive Bayes 모델 선택 - 연속형 자료
+#model = GaussianNB()
+
+model = BernoulliNB(alpha=0.1) 
+#model = BernoulliNB() 
+
+model.fit( X_train, y_train )
+
+# 예측
+y_pred= model.predict(X_test)
+print(y_pred)
+
+
+#5. 모델 평가
+from sklearn.metrics import confusion_matrix
+conf_matrix= confusion_matrix(y_test, y_pred)
+print(conf_matrix)
+
+# 대각선에 있는 숫자가 정답을 맞춘 것, 그 외가 틀린 것
+
+from sklearn.metrics import classification_report
+report = classification_report(y_test, y_pred)
+print(report)
+
+# 이원 교차표 보는 코드 
+from sklearn import metrics
+naive_matrix = metrics.confusion_matrix(y_test,y_pred)
+print(naive_matrix)
+
+# 정확도 확인하는 코드 
+from sklearn.metrics import accuracy_score
+accuracy = accuracy_score( y_test, y_pred)
+print(accuracy)  # 0.7333
+
+문제7.  위의 나이브 베이즈 모델의 성능을 더 올리시오 ~ 
+
+ 기존 정확도 :  0.7333  -------->  개선후 정확도 :   ?
+      ↓                                           ↓ 
+  BernoulliNB                           GaussianNB
+
+답 코드 :     model = GaussianNB()
+결과:
+
+[[10  0  0]
+ [ 0 13  0]
+ [ 0  0  7]]
+
+1.0
+
+문제8.  유방암 데이터의  나이브베이즈 모델을 파이썬으로 생성하고 정확도를 
+          확인하시오 !
+
+
+다 하고서  45분까지 쉬세요 ~~~
+ 
+print(accuracy)  #  0.941
+
+문제9.  위의 나이브 베이즈 모델을 생성할때 위에서는 min/max 정규화를 
+          했는데 이번에는 scale 함수를 적용해서 수행하고 정확도를 확인하시오 !
+
+from sklearn import preprocessing 
+
+X=preprocessing.StandardScaler().fit(X).transform(X) 
+#X=preprocessing.MinMaxScaler().fit(X).transform(X) 
+
+0.941 로  min/max 와 차이는 없습니다. 
+
+문제10.  wine 데이터를 나이브 베이즈 모델로 분류하시오 ~
+
+ 데이터 선별 :     유방암 데이터, iris 데이터와 같이 종속변수가 분류이면서
+                       수치형 데이터인 데이터로 선별을 합니다. 
+
+wine = pd.read_csv('d:\\data\\wine.csv')
+print(wine)
+           
+문제9번 답 코드전체를 가져오세요~
+
+답:
+
+# ■ [쉬움주의] 유방암 데이터의 악성종양을 knn 으로 분류하기
+
+import pandas as pd  # 데이터 전처리를 위해서 
+import seaborn as sns # 시각화를 위해서 
+
+df = pd.read_csv('d:\\data\\wine.csv')
+print(df)
+
+# DataFrame 확인
+print(df.shape)  # (178, 14)
+print(df.info())  # Type 이 라벨 컬럼 입니다. 
+print(df.describe()) # 요약 통계정보를 확인한다. 
+
+# X = 전체 행, 마지막 열 제외한 모든 열 데이터 -> n차원 공간의 포인트
+X = df.iloc[:, 1:].to_numpy() 
+y = df['Type'].to_numpy()   
+
+print(df.shape)  # (174, 14)
+print(len(X))  # 178
+print(len(y))  # 178
+
+
+# 정규화 진행                     
+from sklearn import preprocessing 
+
+#X=preprocessing.StandardScaler().fit(X).transform(X) 
+X=preprocessing.MinMaxScaler().fit(X).transform(X) 
+
+from sklearn.model_selection import train_test_split 
+                                                                
+# 훈련 데이터 90, 테스트 데이터 10으로 나눈다. 
+X_train, X_test, y_train, y_test = train_test_split(X,y,test_size=0.1, random_state = 10)
+
+print(X_train.shape) # (160, 13)
+print(y_train.shape) # (160, )
+
+# 스케일링(z-score 표준화 수행 결과 확인)
+for col in range(4):
+    print(f'평균 = {X_train[:, col].mean()}, 표준편차= {X_train[:, col].std()}')
+    
+for col in range(4):
+    print(f'평균 = {X_test[:, col].mean()}, 표준편차= {X_test[:, col].std()}')
+
+# 학습/예측(Training/Pradiction)
+#from sklearn.neighbors import KNeighborsClassifier
+from sklearn.naive_bayes import GaussianNB
+
+# k-NN 분류기를 생성
+#classifier = KNeighborsClassifier(n_neighbors=12)
+
+# 나이브베이즈 분류기를 생성
+classifier = GaussianNB() # 
+
+# 분류기 학습
+classifier.fit(X_train, y_train)
+
+# 예측
+y_pred= classifier.predict(X_test)
+print(y_pred)
+
+# 작은 이원교차표
+from sklearn.metrics import confusion_matrix
+conf_matrix= confusion_matrix(y_test, y_pred)
+print(conf_matrix)    
+
+# 정밀도 , 재현율, f1 score 확인 
+from sklearn.metrics import classification_report
+report = classification_report(y_test, y_pred)
+print(report)
+
+# 정확도 확인하는 코드 
+from sklearn.metrics import accuracy_score
+accuracy = accuracy_score( y_test, y_pred)
+print(accuracy)  #  0.888
+
+문제11.  위의 와인 데이터 분류의 나이브 베이즈 모델의 정확도는 0.88 이었습니다.
+           이번에는 knn 으로 정확도를 확인하세요 ~
+
+
+# ■ [쉬움주의] 유방암 데이터의 악성종양을 knn 으로 분류하기
+
+import pandas as pd  # 데이터 전처리를 위해서 
+import seaborn as sns # 시각화를 위해서 
+
+df = pd.read_csv('d:\\data\\wine.csv')
+print(df)
+
+# DataFrame 확인
+print(df.shape)  # (178, 14)
+print(df.info())  # Type 이 라벨 컬럼 입니다. 
+print(df.describe()) # 요약 통계정보를 확인한다. 
+
+# X = 전체 행, 마지막 열 제외한 모든 열 데이터 -> n차원 공간의 포인트
+X = df.iloc[:, 1:].to_numpy() 
+y = df['Type'].to_numpy()   
+
+print(df.shape)  # (174, 14)
+print(len(X))  # 178
+print(len(y))  # 178
+
+
+# 정규화 진행                     
+from sklearn import preprocessing 
+
+#X=preprocessing.StandardScaler().fit(X).transform(X) 
+X=preprocessing.MinMaxScaler().fit(X).transform(X) 
+
+
+from sklearn.model_selection import train_test_split 
+                                                                
+# 훈련 데이터 90, 테스트 데이터 10으로 나눈다. 
+X_train, X_test, y_train, y_test = train_test_split(X,y,test_size=0.1, random_state = 10)
+
+print(X_train.shape) # (160, 13)
+print(y_train.shape) # (160, )
+
+# 스케일링(z-score 표준화 수행 결과 확인)
+for col in range(4):
+    print(f'평균 = {X_train[:, col].mean()}, 표준편차= {X_train[:, col].std()}')
+    
+for col in range(4):
+    print(f'평균 = {X_test[:, col].mean()}, 표준편차= {X_test[:, col].std()}')
+
+# 학습/예측(Training/Pradiction)
+from sklearn.neighbors import KNeighborsClassifier
+#from sklearn.naive_bayes import GaussianNB
+#from sklearn.naive_bayes import MultinomialNB
+
+# k-NN 분류기를 생성
+classifier = KNeighborsClassifier(n_neighbors=6)
+
+# knn 분류기를 생성
+#classifier = GaussianNB() # 
+
+# 분류기 학습
+classifier.fit(X_train, y_train)
+
+# 예측
+y_pred= classifier.predict(X_test)
+print(y_pred)
+
+# 작은 이원교차표
+from sklearn.metrics import confusion_matrix
+conf_matrix= confusion_matrix(y_test, y_pred)
+print(conf_matrix)    
+
+# 정밀도 , 재현율, f1 score 확인 
+from sklearn.metrics import classification_report
+report = classification_report(y_test, y_pred)
+print(report)
+
+# 정확도 확인하는 코드 
+from sklearn.metrics import accuracy_score
+accuracy = accuracy_score( y_test, y_pred)
+print(accuracy)  
+
+문제12. 독버섯을 나이브 베이즈로 분류하시오 !
+
+■ 파이썬 나이브 베이즈 사이킷런 함수 3가지 
+
+1. BernoulliNB  :  이산형 데이터를 분류할 때 적합 
+2. GaussianNB  : 연속형 데이터를 분류할 때 적합 
+3. MultinomialNB :   이산형 데이터를 분류할 때 적합
+
+* 독버섯 데이터를 나이브 베이즈 모델로 분류하기 
+
+1. R 에서 :
+mushroom <- read.csv("mushrooms.csv", header=T, stringsAsFactors=TRUE)
+
+2. 파이썬에서:
+df = pd.read_csv('d:\\data\\mushrooms.csv')
+
+import pandas as pd  # 데이터 전처리를 위해서 
+import seaborn as sns # 시각화를 위해서 
+
+df = pd.read_csv('d:\\data\\mushrooms.csv')
+
+df = pd.get_dummies(df)
+#print(df.shape)  # (8124, 23)
+print(df)
+print(df.shape) # (8124, 119)
+
+# get_dummies 함수를 이용해서 값의 종류에 따라 
+# 전부 0 아니면 1로 변환함 
+
+# DataFrame 확인
+print(df.shape)  # (8124, 23)
+print(df.info())  # 전부 object (문자)형으로 되어있음
+print(df.describe())
+
+# X = 전체 행, 마지막 열 제외한 모든 열 데이터 -> n차원 공간의 포인트
+X = df.iloc[:,2:].to_numpy() 
+y = df.iloc[:,1].to_numpy()   
+print(X)
+print(y)
+
+print(df.shape)  # (8124, 119)
+print(len(X))  # 8124
+print(len(y))  # 8124
+
+#from sklearn import preprocessing 
+
+#X=preprocessing.StandardScaler().fit(X).transform(X) 
+#X=preprocessing.MinMaxScaler().fit(X).transform(X) 
+
+from sklearn.model_selection import train_test_split 
+                                                                                     
+# 훈련 데이터 75, 테스트 데이터 25으로 나눈다. 
+X_train, X_test, y_train, y_test = train_test_split(X,y,test_size=0.25, random_state = 10)
+
+print(X_train.shape)   # (6093, 22)
+print(y_train.shape)   # (6093,)
+
+
+
+# 스케일링(z-score 표준화 수행 결과 확인)
+#for col in range(4):
+#    print(f'평균 = {X_train[:, col].mean()}, 표준편차= {X_train[:, col].std()}')
+    
+#for col in range(4):
+#    print(f'평균 = {X_test[:, col].mean()}, 표준편차= {X_test[:, col].std()}')
+
+
+# 학습/예측(Training/Pradiction)
+#from sklearn.neighbors import KNeighborsClassifier
+#from sklearn.naive_bayes import GaussianNB
+#from sklearn.naive_bayes import MultinomialNB
+from sklearn.naive_bayes import BernoulliNB
+
+# k-NN 분류기를 생성
+#classifier = KNeighborsClassifier(n_neighbors=12)
+
+# 나이브베이즈 분류기를 생성
+classifier = BernoulliNB() # 
+
+# 분류기 학습
+classifier.fit(X_train, y_train)
+
+# 예측
+y_pred= classifier.predict(X_test)
+print(y_pred)
+
+# 작은 이원교차표
+from sklearn.metrics import confusion_matrix
+conf_matrix= confusion_matrix(y_test, y_pred)
+print(conf_matrix)    
+
+# 정밀도 , 재현율, f1 score 확인 
+from sklearn.metrics import classification_report
+report = classification_report(y_test, y_pred)
+print(report)
+
+# 정확도 확인하는 코드 
+from sklearn.metrics import accuracy_score
+accuracy = accuracy_score( y_test, y_pred)
+print(accuracy)  #  0.9497   MultinomialNB
+                     #  0.9615   GaussianNB
+                     #  0.9350   BernoulliNB
+
+ 45분까지 쉬세요 ~~~ 
+
+문제13.(오늘의 마지막 문제) 방금 수행했던 독버섯 분류 나이브 베이즈 모델의 
+        정확도를 아래와 같이 0.99 로 만드는 laplace 값을 알아내시오 !
+
+# 나이브베이즈 분류기를 생성
+classifier = GaussianNB(var_smoothing= ?  )
+
+0.9916297390448056
+
+힌트 코드: 
+
+import  numpy  as np
+
+errors = []
+for i in np.arange(0.001, 0.01 , 0.001):
+    nb = GaussianNB(var_smoothing=i)
+    nb.fit(X_train, y_train)
+    pred_i = nb.predict(X_test)
+    errors.append(np.mean(pred_i != y_test))
+print(errors)
+
+for k, i  in  zip(np.arange(0.001, 0.01 , 0.001),errors):
+    print (k, '--->', i)
+
+전체코드:
+
+import pandas as pd  # 데이터 전처리를 위해서 
+import seaborn as sns # 시각화를 위해서 
+
+df = pd.read_csv('d:\\data\\mushrooms.csv')
+
+df = pd.get_dummies(df)
+#print(df.shape)  # (8124, 23)
+print(df)
+print(df.shape) # (8124, 119)
+
+# get_dummies 함수를 이용해서 값의 종류에 따라 
+# 전부 0 아니면 1로 변환함 
+
+# DataFrame 확인
+print(df.shape)  # (8124, 23)
+print(df.info())  # 전부 object (문자)형으로 되어있음
+print(df.describe())
+
+# X = 전체 행, 마지막 열 제외한 모든 열 데이터 -> n차원 공간의 포인트
+X = df.iloc[:,2:].to_numpy() 
+y = df.iloc[:,1].to_numpy()   
+print(X)
+print(y)
+
+print(df.shape)  # (8124, 119)
+print(len(X))  # 8124
+print(len(y))  # 8124
+
+#from sklearn import preprocessing 
+
+#X=preprocessing.StandardScaler().fit(X).transform(X) 
+#X=preprocessing.MinMaxScaler().fit(X).transform(X) 
+
+from sklearn.model_selection import train_test_split 
+                                                                                     
+# 훈련 데이터 75, 테스트 데이터 25으로 나눈다. 
+X_train, X_test, y_train, y_test = train_test_split(X,y,test_size=0.25, random_state = 10)
+
+print(X_train.shape)   # (6093, 22)
+print(y_train.shape)   # (6093,)
+
+
+
+# 스케일링(z-score 표준화 수행 결과 확인)
+#for col in range(4):
+#    print(f'평균 = {X_train[:, col].mean()}, 표준편차= {X_train[:, col].std()}')
+    
+#for col in range(4):
+#    print(f'평균 = {X_test[:, col].mean()}, 표준편차= {X_test[:, col].std()}')
+
+
+# 학습/예측(Training/Pradiction)
+#from sklearn.neighbors import KNeighborsClassifier
+#from sklearn.naive_bayes import GaussianNB
+#from sklearn.naive_bayes import MultinomialNB
+from sklearn.naive_bayes import BernoulliNB
+
+# k-NN 분류기를 생성
+#classifier = KNeighborsClassifier(n_neighbors=12)
+
+# 나이브베이즈 분류기를 생성
+classifier = GaussianNB(var_smoothing=0.04) # 
+
+# 분류기 학습
+classifier.fit(X_train, y_train)
+
+# 예측
+y_pred= classifier.predict(X_test)
+print(y_pred)
+
+# 작은 이원교차표
+from sklearn.metrics import confusion_matrix
+conf_matrix= confusion_matrix(y_test, y_pred)
+print(conf_matrix)    
+
+# 정밀도 , 재현율, f1 score 확인 
+from sklearn.metrics import classification_report
+report = classification_report(y_test, y_pred)
+print(report)
+
+# 정확도 확인하는 코드 
+from sklearn.metrics import accuracy_score
+accuracy = accuracy_score( y_test, y_pred)
+print(accuracy)  #  0.9497   MultinomialNB
+                 #  0.9615   GaussianNB
+                 #  0.9350   BernoulliNB
+
+#%%
+import  numpy  as np
+
+errors = []
+for i in np.arange(0.001, 0.01 , 0.001):
+    nb = GaussianNB(var_smoothing=i)
+    nb.fit(X_train, y_train)
+    pred_i = nb.predict(X_test)
+    errors.append(np.mean(pred_i != y_test))
+print(errors)
+
+for k, i  in  zip(np.arange(0.001, 0.01 , 0.001),errors):
+    print (k, '--->', i)
+    
+
+
+import matplotlib.pyplot as plt
+
+plt.plot(np.arange(0.001, 0.01 , 0.001), errors, marker='o')
+plt.title('Mean error with laplace-Value')
+plt.xlabel('laplace-value')
+plt.ylabel('mean error')
+plt.show()
+
+■ 파이썬을 활용한 머신러닝
+
+ 1.  knn 을 파이썬으로 구현하는 방법
+ 2.  naivebayes 를 파이썬으로 구현하는 방법 
+ 
+  R 과  파이썬의 차이점 ?     1.  stringsAsFactors=True 를 안쓰고 그냥 로드 
+                                      2.  명목형 데이터를 dummy 변수화 해야함
+
+df = pd.get_dummies(df, drop_first=True) # 더미 변수 생성
+옵션: drop_first=True 를 사용하게 되면 생성된 더미변수중에 하나의 컬럼(첫번째)
+을 삭제합니다. 
+
+■ 3장. 의사결정트리 
+
+ 의사결정트리 --> 랜덤포레스트 (앙상블+의사결정트리) 
+ 회귀분석
+
+▦ 독버섯 데이터를 의사결정트리 알고리즘으로 분류하기 
+
+import pandas as pd  # 데이터 전처리를 위해서 
+import seaborn as sns # 시각화를 위해서 
+
+df = pd.read_csv('d:\\data\\mushrooms.csv')
+
+df = pd.get_dummies(df)
+#print(df.shape)  # (8124, 23)
+print(df)
+print(df.shape) # (8124, 119)
+
+# get_dummies 함수를 이용해서 값의 종류에 따라 
+# 전부 0 아니면 1로 변환함 
+
+# DataFrame 확인
+print(df.shape)  # (8124, 23)
+print(df.info())  # 전부 object (문자)형으로 되어있음
+print(df.describe())
+
+# 종속변수와 독립변수를 구성하는 작업 
+X = df.iloc[:, 1: ].to_numpy()  # 독립변수들
+y = df.iloc[:, 0 ].to_numpy()   # 종속변수
+print(X)
+print(y)
+
+print(df.shape)  # (8124, 119)
+print(len(X))  # 8124
+print(len(y))  # 8124
+
+#from sklearn import preprocessing 
+#X=preprocessing.StandardScaler().fit(X).transform(X)  
+#print(X)
+#X=preprocessing.MinMaxScaler().fit(X).transform(X) 
+
+
+from sklearn.model_selection import train_test_split 
+                                                                                     
+# 훈련 데이터 75, 테스트 데이터 25으로 나눈다. 
+X_train, X_test, y_train, y_test = train_test_split(X,y,test_size=0.25, random_state = 10)
+
+print(X_train.shape)   # (6093, 95)
+print(y_train.shape)   # (6093,)
+
+
+# 학습/예측(Training/Pradiction)
+
+# sklearn 라이브러리에서 Decision Tree 분류 모형 가져오기
+from sklearn import tree
+
+#  의사결정트리 분류기를 생성 (criterion='entropy' 적용)
+classifier = tree.DecisionTreeClassifier(criterion='entropy', max_depth=5)
+# criterion 은 entropy 와 gini  가 있습니다. 
+# max_depth는 가지의 깊이를 나타냄, 너무 깊으면 오버피팅된다. 
+
+# 분류기 학습
+classifier.fit(X_train, y_train)
+
+# 예측
+y_pred= classifier.predict(X_test)
+print(y_pred)
+
+# 작은 이원교차표
+from sklearn.metrics import confusion_matrix
+conf_matrix= confusion_matrix(y_test, y_pred)
+print(conf_matrix)    
+
+# 정밀도 , 재현율, f1 score 확인 
+from sklearn.metrics import classification_report
+report = classification_report(y_test, y_pred)
+print(report)
+
+# 정확도 확인하는 코드 
+from sklearn.metrics import accuracy_score
+accuracy = accuracy_score( y_test, y_pred)
+print(accuracy)  #  1.0   Decision tree 
+                 #  0.9497   MultinomialNB
+                 #  0.9615   GaussianNB
+                 #  0.9350   BernoulliNB
+
+문제14.  iris 데이터를 의사결정트리로 분류하고 시각화 하시오 !
+           (중요한 컬럼 확인 - 정보획득량이 제일 높은것 확인)
+
+import pandas as pd  # 데이터 전처리를 위해서 
+import seaborn as sns # 시각화를 위해서 
+
+col_names = ['sepal-length', 'sepal-width','petal-length', 'petal-width','Class']
+
+df =  pd.read_csv('d:\\data\\iris2.csv', encoding='UTF-8', header=None, names=col_names)
+
+print(df.shape)  # (149, 5)
+#print(df)
+
+# DataFrame 확인
+print(df.info())  # 전부 object (문자)형으로 되어있음
+print(df.describe())
+print(df)
+
+#  독립변수와 종속변수를 구성하면서 numpy array 로 변환
+X = df.iloc[:,:-1].to_numpy() 
+y = df.iloc[:,-1].to_numpy()   
+
+print(len(X))  # 149
+print(len(y))  # 149
+
+
+# 최대최소 정규화를 진행해서 0~1사이의 데이터로 변환합니다. 
+
+from sklearn import preprocessing 
+
+#X=preprocessing.StandardScaler().fit(X).transform(X)  
+X=preprocessing.MinMaxScaler().fit(X).transform(X) 
+print( X.max() )  
+print( X.min() )  
+print( X.mean() )  
+
+# 훈련 데이터와 테스트 데이터로 분리 
+from sklearn.model_selection import train_test_split 
+                                                                                     
+# 훈련 데이터 75, 테스트 데이터 25으로 나눈다. 
+X_train, X_test, y_train, y_test = train_test_split(X,y,test_size=0.25, random_state = 10)
+
+print(X_train.shape)   # (112, 4)
+print(y_train.shape)   # (112,)
+
+
+# 학습/예측(Training/Pradiction)
+# sklearn 라이브러리에서 Decision Tree 분류 모형 가져오기
+from sklearn import tree
+
+#  의사결정트리 분류기를 생성 (criterion='entropy' 적용)
+classifier = tree.DecisionTreeClassifier(criterion='entropy', max_depth=3)
+#classifier = tree.DecisionTreeClassifier(criterion='gini', max_depth=3)
+# 메뉴얼 : https://scikit-learn.org/stable/modules/generated/sklearn.tree.DecisionTreeClassifier.html
+
+# 분류기 학습
+classifier.fit(X_train, y_train)
+
+# 특성 중요도 (정보획득량을 이용해서 종속변수에 미치는 중요도를 확인) 
+print(df.columns.values)  # 컬럼 출력 
+print("특성 중요도 : \n{}".format(classifier.feature_importances_))
+
+
+import matplotlib.pyplot as plt
+import numpy as np
+
+def plot_feature_importances_cancer(model):
+    n_features = df.shape[1]  # 아이리스 데이터의 컬럼의 갯수 
+    plt.barh(range(n_features-1),model.feature_importances_, align='center') # 가로 막대 그래프
+    plt.yticks(np.arange(n_features), df.columns.values)  #  막대 그래프 y 축의 눈금값
+    plt.xlabel("attr importances")  # x 축 이름
+    plt.ylabel("attr")   # y 축 이름 
+    plt.ylim(-1,n_features)  # y 축의 눈금의 범위
+
+설명:  n_features-1 는 n_features 가 iris 의 컬럼의 갯수 5개인데 그중에 독립변수가 4개이므로
+        -1 을 해준것 입니다. 
+
+plot_feature_importances_cancer(classifier)
+plt.show()
+
+#%%
+
+# 테스트 데이터를 모델에 넣고 예측합니다. 
+y_pred= classifier.predict(X_test)
+y_pred
+
+# 작은 이원교차표
+from sklearn.metrics import confusion_matrix
+conf_matrix= confusion_matrix(y_test, y_pred)
+print(conf_matrix)    
+
+# 정밀도 , 재현율, f1 score 확인 
+from sklearn.metrics import classification_report
+report = classification_report(y_test, y_pred)
+#print(report)
+
+# 정확도 확인하는 코드 
+from sklearn.metrics import accuracy_score
+accuracy = accuracy_score( y_test, y_pred)
+print( accuracy) 
+
+# 의사결정트리를 시각화 합니다. 
+
+import pydotplus  # 의사결정트리 시각화를 위해 필요
+from sklearn.tree import export_graphviz   # 의사결정트리 시각화를 위해 필요
+from IPython.core.display import Image # 쥬피터노트북에서 시각화된것 표시 
+import matplotlib.pyplot as plt   # 스파이더에서 시각화된것 볼려면 필요
+
+# 그래프 설정
+# out_file=None : 결과를 파일로 저장하지 않겠다.
+# filled=True : 상자 채우기
+# rounded=True : 상자모서리 둥그렇게 만들기
+# special_characters=True : 상자안에 내용 넣기
+
+dot_data = export_graphviz(classifier, out_file=None,
+                           feature_names=df.columns.values[0:4],
+                           class_names=classifier.classes_,
+                           filled=True, rounded=True,
+                           special_characters=True)
+
+# 그래프 그리기
+dot_data
+graph = pydotplus.graph_from_dot_data(dot_data)
+Image(graph.create_png())
+
+
+# 그래프 해석
+#첫번째 줄 : 분류 기준
+#entropy : 엔트로피값
+#sample : 분류한 데이터 개수
+#value : 클래스별 데이터 개수
+#class : 예측한 답
+
+문제15. max_depth 를 3이 아니라 4를 주고 다시 모델을 만들고 시각화 하시오 !
+
+답:
+# 학습/예측(Training/Pradiction)
+# sklearn 라이브러리에서 Decision Tree 분류 모형 가져오기
+from sklearn import tree
+
+#  의사결정트리 분류기를 생성 (criterion='entropy' 적용)
+classifier = tree.DecisionTreeClassifier(criterion='entropy', max_depth=4 )
+
+# 분류기 학습
+classifier.fit(X_train, y_train)
+
+문제16.  화장품 데이터(skin.csv) 를 이용해서 의사결정트리 모델을 생성하시오 !
+
+import pandas as pd  # 데이터 전처리를 위해서 
+import seaborn as sns # 시각화를 위해서 
+
+
+df =  pd.read_csv('d:\\data\\skin.csv', encoding='UTF-8')
+
+df = pd.get_dummies(df, drop_first=True)
+df
+
+# X = 전체 행, 마지막 열 제외한 모든 열 데이터 -> n차원 공간의 포인트
+X = df.iloc[:,1:6].to_numpy() 
+y = df.iloc[:,6].to_numpy()   
+
+print(X)  # 149
+print(y)  # 149
+
+print(len(X))  # 149
+print(len(y))  # 149
+
+from sklearn.model_selection import train_test_split 
+                                                                                     
+# 훈련 데이터 75, 테스트 데이터 25으로 나눈다. 
+X_train, X_test, y_train, y_test = train_test_split(X,y,test_size=0.25, random_state = 10)
+
+print(X_train.shape)   # (111, 4)
+print(y_train.shape)   # (111,)
+
+
+# 학습/예측(Training/Pradiction)
+# sklearn 라이브러리에서 Decision Tree 분류 모형 가져오기
+from sklearn import tree
+
+#  의사결정트리 분류기를 생성 (criterion='entropy' 적용)
+classifier = tree.DecisionTreeClassifier(criterion='entropy', max_depth=3)
+#classifier = tree.DecisionTreeClassifier(criterion='gini', max_depth=3)
+# 메뉴얼 : https://scikit-learn.org/stable/modules/generated/sklearn.tree.DecisionTreeClassifier.html
+
+# 분류기 학습
+classifier.fit(X_train, y_train)
+
+# 특성 중요도
+print(df.columns.values[1:6])
+print("특성 중요도 : \n{}".format(classifier.feature_importances_))
+
+df.columns.values[1:6]
+
+df.shape[1]-2
+
+classifier.feature_importances_
+
+import matplotlib.pyplot as plt
+import numpy as np
+
+
+def plot_feature_importances_cancer(model):
+    n_features = df.shape[1]
+    plt.barh(range(n_features-2),model.feature_importances_, align='center')
+    plt.yticks(np.arange(n_features), df.columns.values[1:6])
+    plt.xlabel("attr importances")
+    plt.ylabel("attr")
+    plt.ylim(-1,n_features)
+
+plot_feature_importances_cancer(classifier)
+plt.show()
+
+y_pred= classifier.predict(X_test)
+
+# 작은 이원교차표
+from sklearn.metrics import confusion_matrix
+conf_matrix= confusion_matrix(y_test, y_pred)
+print(conf_matrix)    
+
+# 정밀도 , 재현율, f1 score 확인 
+from sklearn.metrics import classification_report
+report = classification_report(y_test, y_pred)
+print(report)
+
+# 정확도 확인하는 코드 
+from sklearn.metrics import accuracy_score
+accuracy = accuracy_score( y_test, y_pred)
+print( accuracy)
+
+classifier.classes_
+
+import pydotplus
+from sklearn.tree import export_graphviz
+from IPython.core.display import Image
+import matplotlib.pyplot as plt
+
+# 그래프 설정
+
+# out_file=None : 결과를 파일로 저장하지 않겠다.
+# filled=True : 상자 채우기
+# rounded=True : 상자모서리 둥그렇게 만들기
+# special_characters=True : 상자안에 내용 넣기
+
+dot_data = export_graphviz(classifier, out_file=None,
+                           feature_names=df.columns.values[1:6],
+                           class_names=['yes','no'],
+                           filled=True, rounded=True,
+                           special_characters=True)
+
+ 
+# 그래프 그리기
+
+dot_data
+graph = pydotplus.graph_from_dot_data(dot_data)
+Image(graph.create_png())
+
+
+# 그래프 해석
+#첫번째 줄 : 분류 기준
+#entropy : 엔트로피값
+#sample : 분류한 데이터 개수
+#value : 클래스별 데이터 개수
+#class : 예측한 답
+
+문제17. R을 활용하는 머신러닝에서 사용했던 독일 은행 데이터의 채무 불이행자를 
+         예측하고 의사결정트리 나무를 시각화 하시오!
+
+  credit.csv  를 이용하시면 됩니다. 
+
+
+문제18.  위의 의사결정트리의 모델을 의사결정트리 + 앙상블 기법을 적용한
+           랜덤포레스트로 구현하시오 !
+
+from sklearn import tree
+from  sklearn.ensemble   import  RandomForestClassifier 
+
+#  의사결정트리 분류기를 생성 (criterion='entropy' 적용)
+#classifier = tree.DecisionTreeClassifier(criterion='entropy', max_depth=3)
+#classifier = tree.DecisionTreeClassifier(criterion='gini', max_depth=3)
+# 메뉴얼 : https://scikit-learn.org/stable/modules/generated/sklearn.tree.DecisionTreeClassifier.html
+
+classifier = RandomForestClassifier( n_estimators=100,
+                                            oob_score=True,
+                                            random_state= 10 )  
+
+classifier.fit( X_train, y_train )
+
+print ( classifier.oob_score_)
+
+■ 4장.  회귀분석 
+
+ 1. 단순 회귀 분석
+ 2. 다중 회귀 분석 
+
+1970년대 후반과 1980년대 초반의 자동차 연비를 예측하는 모델을 만듭니다. 
+이 기간에 출시된 자동차 정보를 모델에 제공하겠습니다. 
+이 정보에는 실린더 수, 배기량, 마력(horsepower), 공차 중량 같은 속성이 포함되어
+있는 데이터 입니다. 
+
+# -*- coding: utf-8 -*-
+### 기본 라이브러리 불러오기
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+'''
+[Step 1] 데이터 준비 - read_csv() 함수로 자동차 연비 데이터셋 가져오기
+'''
+# CSV 파일을 데이터프레임으로 변환
+df = pd.read_csv('D:\\data\\auto-mpg.csv', header=None)
+
+# 열 이름 지정
+df.columns = ['mpg','cylinders','displacement','horsepower','weight',
+ 'acceleration','model year','origin','name']
+
+# 데이터 살펴보기
+print(df.head())
+print('\n')
+
+# IPython 디스플레이 설정 - 출력할 열의 개수 한도 늘리기
+pd.set_option('display.max_columns', 10)
+print(df.head())
+print('\n')
+'''
+[Step 2] 데이터 탐색
+'''
+# 데이터 자료형 확인
+print(df.info())
+print('\n')
+
+# 설명:  horsepower 가 object 여서 수치형 데이터로 변경해야합니다. 
+#  전처리가 필요한 문자가 포함되어있어서 object 문자형으로 출력되고 있습니다. 
+
+# 데이터 통계 요약정보 확인
+print(df.describe())
+print('\n')
+
+# 설명:  horsepower 가 빠졌음을 확인하세요 ~  통계요약정보를 출력하려면
+# 숫자형 데이터여야 출력될 수 있습니다. 
+
+# mpg 는 mile per gallon 의 약자로 영국과 미국에서는 한국과는 달리
+# 갤런당 마일 단위로 연비를 표시합니다.
+# 한국은 리터당 킬로미터(km/L) 단위로 표시한다.
+# mpg 열을 한국에서 사용하는 km/L 로 변환해줘야 합니다. 
+# 1 갤런이 3.78541 이다. 그리고 1마일이 1.60934 km 이다.
+# 그렇다면 1 mpg(mile per  gallon) 은 ?
+
+# print  ( 1.60934 /  3.78541 )  # 0.425  km/L 
+
+# horsepower 열의 자료형 변경 (문자열 ->숫자)
+print(df['horsepower'].unique()) # horsepower 열의 고유값 확인
+print('\n')
+df['horsepower'].replace('?', np.nan, inplace=True) # '?'을 np.nan으로 변경
+
+df.dropna(subset=['horsepower'], axis=0, inplace=True) # 누락데이터 행을 삭제
+
+df['horsepower'] = df['horsepower'].astype('float') # 문자열을 실수형으로 변환
+print(df.describe()) # 데이터 통계 요약정보 확인
+print('\n')
+'''
+[Step 3] 속성(feature 또는 variable) 선택
+'''
+# 분석에 활용할 열(속성)을 선택 (연비, 실린더, 출력, 중량)
+ndf = df[['mpg', 'cylinders', 'horsepower', 'weight']]
+print(ndf.head())
+print('\n')
+
+### 종속 변수 Y인 "연비(mpg)"와 다른 변수 간의 선형관계를 그래프(산점도)로 확인
+# Matplotlib으로 산점도 그리기
+ndf.plot(kind='scatter', x='weight', y='mpg', c='coral', s=10, figsize=(10, 5))
+plt.show()
+plt.close()
+
+# seaborn으로 산점도 그리기
+fig = plt.figure(figsize=(10, 5))   #  전체 그림판 가로 10, 세로 5로 잡아주고 
+ax1 = fig.add_subplot(1, 2, 1)    #  첫번째 그림판 영역
+ax2 = fig.add_subplot(1, 2, 2)    #  두번째 그림판 영역 
+sns.regplot(x='weight', y='mpg', data=ndf, ax=ax1) # 회귀선 표시
+sns.regplot(x='weight', y='mpg', data=ndf, ax=ax2, fit_reg=False) #회귀선 미표시
+plt.show()
+plt.close()
+
+# seaborn 조인트 그래프 - 산점도, 히스토그램
+sns.jointplot(x='weight', y='mpg', data=ndf) # 회귀선 없음
+sns.jointplot(x='weight', y='mpg', kind='reg', data=ndf) # 회귀선 표시
+plt.show()
+plt.close()
+
+# seaborn pariplot으로 두 변수 간의 모든 경우의 수 그리기
+sns.pairplot(ndf)
+plt.show()
+plt.close()
+'''
+Step 4: 데이터셋 구분 - 훈련용(train data)/ 검증용(test data)
+'''
+# 속성(변수) 선택
+X=ndf[['weight']] #독립 변수 X
+y=ndf['mpg'] #종속 변수 Y
+
+# train data 와 test data로 구분(7:3 비율)
+from sklearn.model_selection import train_test_split
+X_train, X_test, y_train, y_test = train_test_split(X, #독립 변수
+ y, #종속 변수
+ test_size=0.3, #검증 30%
+ random_state=10) #랜덤 추출 값
+
+print('train data 개수: ', len(X_train))
+print('test data 개수: ', len(X_test))
+
+'''
+Step 5: 단순회귀분석 모형 - sklearn 사용
+'''
+# sklearn 라이브러리에서 선형회귀분석 모듈 가져오기
+from sklearn.linear_model import LinearRegression
+
+# 단순회귀분석 모형 객체 생성
+lr = LinearRegression()
+
+# train data를 가지고 모형 학습
+lr.fit(X_train, y_train)
+
+# 학습을 마친 모형에 test data를 적용하여 결정계수(R-제곱) 계산
+r_square = lr.score(X_test, y_test)
+print(r_square)
+print('\n')
+
+# 회귀식의 기울기
+print('기울기 a: ', lr.coef_)
+print('\n')
+
+# 회귀식의 y절편
+print('y절편 b', lr.intercept_)
+print('\n')
+
+# 모형에 전체 X 데이터를 입력하여 예측한 값 y_hat을 실제 값 y와 비교
+y_hat = lr.predict(X)
+plt.figure(figsize=(10, 5))
+ax1 = sns.distplot(y, hist=False, label="y")
+ax2 = sns.distplot(y_hat, hist=False, label="y_hat", ax=ax1)
+plt.show()
+plt.close()
+
+                         
+45분까지 쉬세요 ~~               
+
+
+오늘의 마지막 문제.  체중과 키 데이터를 이용해서 단순 선형 회귀분석을 하고
+                           seaborn 그래프로 시각화 하시오 !
+  
+  몸무게:  독립변수,  키: 종속변수         코드 + 시각화 그림 첨부
+
+6시 신호 보냈습니다.
+weight=[ 72, 72, 70, 43, 48, 54, 51, 52, 73, 45, 60, 62, 64, 47, 51, 74, 88,64, 56, 56  ]
+tall = [ 176, 172, 182, 160, 163, 165, 168, 163, 182, 148, 170, 166, 172, 169, 163, 170, 182, 174, 164, 160 ] 
+
+dict_data = { 'weight' : [ 72, 72, 70, 43, 48, 54, 51, 52, 73, 45, 60, 62, 64, 47, 51, 74, 88, 64, 56, 56  ],
+                  'tall' : [ 176, 172, 182, 160, 163, 165, 168, 163, 182, 148, 170, 166, 172, 169, 163, 170, 182, 174, 164, 160 ]   }
+
+df = pd.DataFrame(dict_data)
+print (df)
+
+■ 복습
+
+ 1. 파이썬으로 knn 구현하기
+ 2. 파이썬으로 naivebayes 구현하기
+ 3. 파이썬으로 decision  tree 구현하기
+ 4. 파이썬으로 regression  구현하기 ( 단순회귀분석, 다중회귀분석)
+
+■ 머신러닝 데이터 분석 5가지 단계 (큰그림)
+
+ 1. 데이터 수집과 설명   :     pandas 를 사용
+ 2. 데이터 탐색 및 시각화 :  pandas, matplotlib, seaborn 사용
+ 3. 머신러닝 모델 훈련 :  sklearn 사용 
+ 4. 머신러닝 모델 평가 :  pandas 사용 
+ 5. 머신러닝 모델 성능개선  : pandas 를 사용( 파생변수 생성)
+
+■  어제 마지막 문제의 결정계수를 확인하고 성능을 더 높이시오
+
+#미승이 코드
+
+# 필요한 패키지 불러오기
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+ 
+
+# step1. 데이터 프레임으로 변환시키기
+weight=[ 72, 72, 70, 43, 48, 54, 51, 52, 73, 45, 60, 62, 64, 47, 51, 74, 88,64, 56, 56  ]
+tall = [ 176, 172, 182, 160, 163, 165, 168, 163, 182, 148, 170, 166, 172, 169, 163, 170, 182, 174, 164, 160 ] 
+
+dict_data = { 'weight' : [ 72, 72, 70, 43, 48, 54, 51, 52, 73, 45, 60, 62, 64, 47, 51, 74, 88, 64, 56, 56  ],
+                  'tall' : [ 176, 172, 182, 160, 163, 165, 168, 163, 182, 148, 170, 166, 172, 169, 163, 170, 182, 174, 164, 160 ]   }
+
+df = pd.DataFrame(dict_data)
+print (df)
+
+#Step 2: 데이터셋 구분 - 훈련용(train data)/ 검증용(test data) 
+
+# 속성(변수) 선택
+X=df[['weight']] #독립 변수 X
+y=df['tall'] #종속 변수 Y
+
+# train data 와 test data로 구분(9:1 비율)
+# 데이터 양이 적기 때문에 9대 1로 나눠줌
+from sklearn.model_selection import train_test_split
+X_train, X_test, y_train, y_test = train_test_split(X, #독립 변수
+ y, #종속 변수
+ test_size=0.1, #검증 10%
+ random_state=10) #랜덤 추출 값
+
+print('train data 개수: ', len(X_train)) #18개
+print('test data 개수: ', len(X_test)) #2개
+
+
+#Step 3: 단순회귀분석 모형 - sklearn 사용
+# sklearn 라이브러리에서 선형회귀분석 모듈 가져오기
+from sklearn.linear_model import LinearRegression
+
+# 단순회귀분석 모형 객체 생성
+
+lr = LinearRegression()
+
+# train data를 가지고 모형 학습
+lr.fit(X_train, y_train)
+
+# 학습을 마친 모형에 test data를 적용하여 결정계수(R-제곱) 계산
+r_square = lr.score(X_test, y_test)
+print(r_square) #0.8657609246754262
+
+
+# 회귀식의 기울
+print('기울기 a: ', lr.coef_) #기울기 a:  [0.57510584]
+
+# 회귀식의 y절편
+print('y절편 b', lr.intercept_) #133.84081287044876
+
+# 모형에 전체 X 데이터를 입력하여 예측한 값 y_hat을 실제 값 y와 비교
+y_hat = lr.predict(X)
+plt.figure(figsize=(10, 5))
+ax1 = sns.distplot(y, hist=False, label="y")
+ax2 = sns.distplot(y_hat, hist=False, label="y_hat", ax=ax1)
+plt.show()
+plt.close()
+
+ 
+성능개선 방법 :   단순 회귀 ----> 다항회귀로 변경해서 성능을 올린다. 
+
+1. 단순회귀 :  독립변수 한개에 종속변수 한개 ( 선형 회귀선 )
+2. 다항회귀 :  독립변수 한개에 종속변수 한개 ( 비선형 회귀선 )
+3. 다중회귀 :  종속변수에 영향을 주는 독립변수가 여러개인 경우 
+
+ 1교시 신호 보냈습니다. 
+
+문제. 첫번째 예제 단순회귀분석의 결과 그래프(무게와 연비간의 예측값과 실제값의 비교)를
+ 보면 실제값은 왼쪽으로 편향되어있고 예측값을 반대로 오른쪽으로 편중되는 경향을 
+ 보인다. 따라서 독립변수(weight) 과 종속변수(mpg) 사이의 선형관계가 있지만,
+ 모형의 오차를 더 줄일 필요가 있어 보인다. 앞에서 본 산포도를 보면 직선보다는 
+곡선이 더 적합해 보인다.  비선형 회귀분석을 통해 모형의 정확도를 더 높이시오.
+
+
+문제19.  어제 마지막 문제로 풀었던 체중과 키와의 단순 선형 회귀분석 결과의
+           테스트 데이터에 대한 결정계수는  0.86 이었습니다. 그렇다면 이번에는
+           다항회귀로 비선형 회귀선을 만들어 성능을 더 올리세요~ 
+
+ 단순회귀의 결정계수 :  print(r_square) #0.8657609246754262
+ 다항회귀의 결정계수 :  print(r_square) # 0.9263965046109321
+
+답:  미승의 단순회귀를 다항회귀로.py
+                                                                              45분까지 쉬세요 ~~~
+선생님 이거도 주피터 팁일지 모르겠는데..ㅋㅋ
+
+선생님이 주신 전체 코드 쥬피터에 복붙하고
+
+분할하고 싶은 곳에 커서 놓고 
+
+control+shife+ -(마이너스) 누르면 
+커서 있는데서 칸 분할 되요!
+(코렙은 control+ m+ -(마이너스)  )
+
+하나씩 입력 안하고 전체 붙여넣기하고 원하는 부분에서 잘라내면 됩니당
+
+■ 6. Multi Regression (다중회귀) 
+
+  종속변수에 영향을 주는 독립변수가 여러개 인 경우 
+
+예제1. 미국 우주 왕복선 폭파원인
+예제2. 미국 대학교 입학점수에 영향을 미치는 과목 분석
+예제3. 미국 국민 의료비에 영향을 주는 요소 분석
+
+▩ 예제1. 미국 우주 왕복선 폭파원인
+
+  o형링의 손상이  온도, 압력, 비행기번호 이 3가지중에 어떤게 더 영향이 큰지 ?
+
+import  numpy  as np
+import   statsmodels.api   as  sm
+import   statsmodels.formula.api   as  smf
+import   pandas  as  pd 
+
+df = pd.read_csv("d:\\data\\challenger.csv", engine='python', 
+                        encoding='CP949')
+
+df 
+
+# 다중 회귀 분석 코드 
+
+model = smf.ols( formula ='distress_ct ~ temperature + field_check_pressure + flight_num' ,
+                       data= df )
+
+result =  model.fit() 
+print ( result.summary() )
+
+분석결과 설명 :  o 형링 파손에 영향을 주는 가장 큰 독립변수는 온도 입니다. 
+                     그 다음이 비행기 노후화를 나타내는 비행기 번호 입니다. 
+
+회귀식 :  y = 3.5271 - 0.0514 * x1 + 0.0018 * x2 + 0.0143 * x3 
+
+문제20. statsmodels 패키지를 이용해서 방금 다중회귀 분석을 해보았는데
+          이번에는 중요한 독립변수인 temperature 만 이용해서 단순회귀 분석을 
+          진행하고 분석된 결과를 출력하세요 ~~  
+
+    종속변수 :  distress_ct  ( o 형링 파손수 )
+    독립변수 :  temperature (온도) 
+
+import  numpy  as np
+import   statsmodels.api   as  sm
+import   statsmodels.formula.api   as  smf
+import   pandas  as  pd 
+
+df = pd.read_csv("d:\\data\\challenger.csv", engine='python', 
+                        encoding='CP949')
+
+model = smf.ols( formula ='distress_ct ~ temperature',  data=df )
+
+result = model.fit()
+print ( result.summary()  )
+
+분석결과 :
+Intercept       3.6984       
+temperature    -0.0475   
+
+    y  =  3.6984  -0.0475 * x1   ( 회귀식 )
+   ↑                            ↑
+ 파손수                       온도 
+
+ 2.21 개                      31도  F(화씨)
+ 0.82 개                      60도  F(화씨)
+ 0.34 개                      70도  F(화씨)
+
+분석결과 :  30도에서 발사하는게 화씨 60도에서 발사하는것보다 3배 더 위험하고
+               화씨 70도에서 발사하는것보다 7~8배 더 위험합니다. 
+
+예제2. 미국 대학교 입학점수에 영향을 미치는 과목 분석
+
+  데이터 :  sports.csv 
+
+  종속변수 :  acceptance        
+
+  독립변수 :   academic
+                  sports
+                  music 
+
+설명:  
+ 분석요청:  학과점수, 체육점수, 음악점수 중에 어떤게 더 입학하는데 더 중요한 것인지 ?
+                3과목의 점수의 단위가 과목마다 다릅니다. (예: 체중과 키 처럼)
+               그래서 이런 경우에는 표준화를 하고 회귀분석을 해야합니다. 
+
+1. 표준화를 안했을때 ?    
+
+# 1. 데이터 불러오기 
+import  numpy  as np
+import   statsmodels.api   as  sm   # 회귀분석을 위해 필요
+import   statsmodels.formula.api   as  smf  # 회귀분석을 위해 필요
+import   pandas  as  pd 
+from  sklearn.preprocessing   import  StandardScaler  # 표준화를 위해 필요 
+
+df = pd.read_csv("d:\\data\\sports.csv", engine='python', encoding='CP949') 
+
+df.columns = ['stud_id', 'academic', 'sports', 'music', 'acceptance']  # 컬럼명을 지정합니다. 
+df 
+
+# 2. 모델 생성하기 
+model = smf.ols( formula ='acceptance ~ academic + sports + music',  data=df )
+
+result = model.fit()   # 모델을 훈련 시킴 
+print ( result.summary()  )
+
+# 분석결과 : 표준화 안했을때는 체육점수가 학과점수보다 더 영향력이 컸습니다. 
+
+2. 표준화를 했을때 ? 
+
+# 1. 데이터 불러오기 
+import  numpy  as np
+import   statsmodels.api   as  sm   # 회귀분석을 위해 필요
+import   statsmodels.formula.api   as  smf  # 회귀분석을 위해 필요
+import   pandas  as  pd 
+from  sklearn.preprocessing   import  StandardScaler  # 표준화를 위해 필요 
+
+df = pd.read_csv("d:\\data\\sports.csv", engine='python', encoding='CP949') 
+
+# 2. 표준화 하기 
+scaler = StandardScaler()
+scaler.fit(df)   # 표준화를 위해 df 데이터를 살펴본다.
+df_scale = scaler.transform(df)  # 표준화 작업 수행하고 df 를 구성 
+
+# 3. 판다스 데이터 프레임으로 구성합니다. 
+df_scale2 = pd.DataFrame( df_scale )
+df_scale2.head() 
+
+# 4. 컬럼을 구성합니다. 
+df_scale2.columns = ['stud_id', 'academic', 'sports', 'music', 'acceptance']  # 컬럼명을 지정합니다. 
+df_scale2.head() 
+
+# 5. 회귀모델을 생성하고 summary 결과를 봅니다. 
+model = smf.ols( formula ='acceptance ~ academic + sports + music',  data=df_scale2 )
+
+result = model.fit()   # 모델을 훈련 시킴 
+print ( result.summary()  )
+
+분석결과 :  학과점수가 체육점수보다 더 영향력이 큰 독립변수로 나타나고 있습니다. 
+
+12시 까지 쉬세요 ~~
+
+문제21. (점심시간 문제)  R 을 활용한 머신러닝 수업때 회귀분석 할때 사용했던
+          미국 의료비 데이터(insurance.csv) 를 가지고 다중회귀분석을 하시오 !
+          회귀분석한 결과를 출력하세요 ~  (데이터 프레임명 : df ) 
+
+       결정계수가 출력되는 결과 화면을 첨부해서 올리세요 ~~~  
+
+      오후에 파생변수 추가해서 결정계수가 올라가는지 확인을 해야 하므로 
+      꼭 점심시간 문제를 풀어서 올리세요 ~~~~
+
+  종속변수 :   expenses 
+  독립변수 :  age, sex, bmi, children, smoker, region
+
+   "표준화 하지 말고 진행하세요 ~~  가족이 한명 늘어날수록 연간 의료비가 얼마나 
+    늘어나는지 볼려면 표준화 하면 안됩니다."  
+
+import numpy as np
+import statsmodels.api as sm
+import statsmodels.formula.api as smf
+import pandas as pd
+from  sklearn.preprocessing import StandardScaler   # 표준화를 위해 필요
+
+
+# 1. 데이터 불러오기
+df = pd.read_csv("c:\\data\\insurance.csv", engine='python', encoding='CP949')
+print(df)
+
+# 2. 모델 생성하기
+model = smf.ols(formula = 'expenses ~ age + sex + bmi + children + smoker + region', data = df)
+result = model.fit()  # 모델 훈련
+print( result.summary() )
+
+분석결과 :
+
+sex[T.male]   -131.3520    --> 남성은 여성에 비해 매년 의료비가 131달러 적게 들거라 예상
+
+smoker[T.yes]   2.385e+04  --> 흡연자는 비흡연자보다 매년 의료비가 2.386x10^4=23,860 달러
+                                        비용이 더든다. 
+
+age         256  ---> 나이가 일년씩 더 해질 때마다 평균적으로 의료비가 256달러 더 든다.
+bmi         339 --->  비만지수가 증가할 때 마다 339달러 더 들거라 예상.
+
+children     475 ---> 부양가족이 한명 더 늘어 날때 마다 연간의료비가 475달러 더 든다.
+
+지역별로는 북동지역이 북서, 남동, 남서에 비해 의료비가 더 든다. 
+
+결정계수 : 0.751
+
+문제22.  비만인 사람은 의료비가 더 지출이 되는지 파생변수를 추가해서 확인하시오 !
+            bmi30 이라는 파생변수를 추가하는데  bmi 가 30 이상이면 1, 아니면 0 이라고
+            해서 컬럼을 하나 만드세요 ~
+
+ * 파생변수 추가 방법 
+
+    1.  R 에서 df$bmi <- ifelse( bmi >= 30, 1, 0 ) 
+    2. 파이썬에서  df['bmi30'] = df['bmi'].apply(함수) 
+
+ * 파이썬 함수를 생성하는데 입력값이 30 이상이면 1이고 아니면 0을 출력하는 함수를
+   func_1 이라는 이름으로 생성하시오 ~
+
+# 1. 데이터 불러오기
+df = pd.read_csv("c:\\data\\insurance.csv", engine='python', encoding='CP949')
+
+# 2. 파생변수 추가 
+def  func_1(x):
+    if  x >= 30:
+        return  1
+    else:
+        return  0 
+
+df['bmi30'] = df['bmi'].apply(func_1)
+df
+
+문제23.  비만인 사람(bmi30) 을 분류하는 파생변수를 추가했으면 결정계수가 더 
+           올라가는지 확인하시오 !
+
+import numpy as np
+import statsmodels.api as sm
+import statsmodels.formula.api as smf
+import pandas as pd
+from  sklearn.preprocessing import StandardScaler   # 표준화를 위해 필요
+
+# 2. 모델 생성하기
+model = smf.ols(formula = 'expenses ~ age + sex + bmi + children + smoker + region 
+                                   + bmi30',
+                       data = df)
+result = model.fit()  # 모델 훈련
+print( result.summary() )
+
+분석결과 : 기존 0.751 에서 0.756 으로 올라갔습니다. 
+
+문제24. 비만이면서 흡연까지 하면 의료비가 더 드는지 확인하시오 !
+
+ 
+# 2. 모델 생성하기
+model = smf.ols(formula = 'expenses ~ age + sex + bmi + children + smoker + region  \
+                                   + bmi30 + bmi30 * smoker',
+                       data = df)
+result = model.fit()  # 모델 훈련
+print( result.summary() )
+
+0.864
+
+설명 : 비만이면서 흡연까지 하게 되면 연간 의료비가 19,790 달러 더 들거라 예상이 됩니다. 
+
+
+■  다중공선성 확인을 파이썬으로 구현하기 
+
+  회귀분석에서 사용된 모형의 일부 독립변수가 다른 독립변수와의 상관정도가 아주 높아서
+  회귀분석 결과에 부정적 영향을 미치는 현상을 말합니다. 
+
+  두 독립변수들끼리 서로에게 영향을 주고 있다면 둘 중 하나의 영향력을 검증할 때
+  다른 하나의 영향력이 약해집니다. 
+
+예:  학업성취도, 일평균음주량, 혈중 알코올 농도 
+         ↑
+    종속변수        
+
+  팽창계수가 보통은 10보다 큰것을 골라내고 까다롭게 하려면 5보다 큰것을 골라낸다.
+
+  일평균음주량, 혈중 알코올 농도 둘다 팽창계수가 높게 나온다면 둘중에 하나를 빼고 아래와 같이
+
+  학업성취도, 일평균음주량  ----> 회귀분석
+  
+  학업성취도, 혈중 알코올 농도 ---> 회귀분석   
+
+
+예제:    crab.csv   :  게의 크기, 무게 등에 대한 데이터로 종속변수가 y 컬럼인데
+                          0 과 1 로 분류하는 데이터 입니다. 
+
+# 1. 데이터 불러오기 
+import  pandas  as  pd
+
+df = pd.read_csv("d:\\data\\crab.csv")
+df.head()
+df.y.unique()
+
+#2. 다중회귀분석을 하고 종속변수에 영향을 주는 독립변수들이 무엇인지 확인하기 
+
+from  statsmodels.formula.api  import  ols 
+
+model = ols( 'y ~ sat + weight + width',  data=df ) 
+results = model.fit()
+print ( result.summary() )
+
+# 분석결과 :   width 는 종속변수에 영향을 주는 유의미한 독립변수로 나타나지만
+                   weight 는 그렇지 않게 보입니다.  별로 중요한 독립변수로 보고 있지 않습니다. 
+                   분석을 잘못할 수 있게 됩니다. 
+
+#3.  팽창계수를 확인합니다. 
+
+from  statsmodels.stats.outliers_influence import  variance_inflation_factor 
+
+print ( model.exog_names )  # 모델에서 분석한 독립변수들이 출력 
+
+['Intercept', 'sat', 'weight', 'width']
+
+variance_inflation_factor( model.exog,  1 ) # 위의 출력된 독립변수중에 첫번째 
+                                                       # 컬럼의 팽창계수 확인 
+
+variance_inflation_factor( model.exog,  2 ) 
+variance_inflation_factor( model.exog,  3 ) 
+
+weight 과 width 가 높은 팽창계수를 보이고 있습니다. 
+
+#4. 위의 팽창계수가 높은 두개의 독립변수를 각각 따로따로 이용해서 모델을 
+     생성합니다. 
+
+model1 = ols( 'y ~ sat + width' , data=df )
+print( model1.fit().summary() )
+
+model2 = ols( 'y ~ sat + weight' , data=df )
+print( model2.fit().summary() )
+
+아까는 weight 이 중요하지 않은 독립변수였는데 width 를 빼고 분석해보니
+중요한 독립변수임이 확인이 되고 있습니다.
+
+55분까지 쉬세요 ~~
+
+문제25.  test_vif1.csv 를 내려받고  팽창계수를 확인하여 vif 지수가 높은
+            독립변수들이 무엇이 있는지 확인하시오 !
+
+  데이터 설명 :  아이큐 , 공부시간 , 시험점수로 되어있는 데이터 입니다 
+
+
+# 1. 데이터 불러오기 
+import  pandas  as  pd
+
+df = pd.read_csv("d:\\data\\test_vif1.csv" , encoding='CP949')
+df.head()
+
+# 2. 모델생성하기
+from  statsmodels.formula.api  import  ols 
+
+model = ols( '시험점수 ~ 아이큐 + 공부시간',  data=df ) 
+results = model.fit()
+print ( results.summary() )
+
+from  statsmodels.stats.outliers_influence import  variance_inflation_factor 
+print ( model.exog_names )  # 모델에서 분석한 독립변수들이 출력 
+
+variance_inflation_factor( model.exog,  2 ) 
+
+■ 내가 추가한 파생변수가 유의미한 파생변수인지 확인을 하고 
+    여러 독립변수 들중에 불필요한 독립변수를 제거하고 필요한 독립변수들만
+   골라내서 회귀분석 할때 사용하는 step 함수를 파이썬으로 구현하기
+
+점심시간 문제 코드를 가져오세요 ~~
+
+import numpy as np
+import statsmodels.api as sm #회귀분석을 위해 필요
+import statsmodels.formula.api as smf #회귀분석을 위해 필요
+import pandas as pd
+
+from  sklearn.preprocessing   import  StandardScaler #표준화하는 전처리함수
+
+df = pd.read_csv("d:\\data\\insurance.csv", engine='python', encoding='CP949')
+print(df.head())
+
+
+#다중회귀 분석 코드
+model = smf.ols(formula = 'expenses ~ age+sex+bmi+children+smoker+region',data=df)
+result = model.fit()
+
+print(result.summary())
+
+## 1.  R 의 step 함수의 기능을 가지고 있는 패키지를 import   합니다. 
+
+from   sklearn.feature_selection  import   RFE 
+from   sklearn.linear_model  import  LinearRegression
+import  pandas  as  pd 
+
+## 2. 데이터 불러오기 
+
+df = pd.read_csv("d:\\data\\insurance.csv", engine='python', encoding='CP949')
+print(df.head())
+
+## 3.  컬럼을 인코딩합니다. 
+
+df = pd.get_dummies(df, drop_first=True)
+df.head()   # 총 9개의 컬럼이 만들어졌음 
+df.columns.values  # 컬럼명을 numpy array 형태로 출력
+
+df.iloc[  :  , 1 ]  
+
+##4. 독립변수와 종속변수를 numpy array 로 변환합니다. 
+#X =  독립변수들 ( numpy array 형태 )  --> age+sex+bmi+children+smoker+region
+X = df.iloc[ : , [0, 1, 2, 4, 5, 6, 7, 8] ].to_numpy()
+# y =  종속변수 ( numpy  array 형태 )  -->  expenses 
+y = df.iloc[ :  , 3 ].to_numpy()
+
+## 5. 회귀 모델을 생성합니다. 
+#from   sklearn.linear_model  import  LinearRegression
+#model = LinearRegression()
+
+
+from  statsmodels.formula.api  import  ols 
+model = ols( 'expenses ~  age+bmi+children+sex_male+smoker_yes+region_northwest+region_southeast+region_southwest',  data=df ) 
+
+##6. step 함수를 이용해서 필요한 독립변수들을 선별합니다.
+#selector = RFE ( 회귀모델명, n_features_to_select= 선별할 독립변수의 갯수, step=스텝횟수)
+
+selector = RFE ( model , n_features_to_select= 6 , step=1)
+selector = selector.fit( X, y )
+
+#	  age	bmi	children	sex_male	 smoker_yes	
+#             region_northwest	region_southeast	region_southwest
+
+print ( selector.support_ )   # [False  True  True  False  True  True  True  True]
+                                   # 8개의 독립변수들중에 선택된 6가지가 True 로 출력이 됨
+
+print( selector.ranking_ )  #  [2 1 1 3 1 1 1 1]  
+                                #   8개의 독립변수들의 중요도 순위가 출력이 됨
+
+문제26. 위의 코드를 다시 테스트 하는데  
+          지금 추가한 파생변수가 필요한 파생변수인지  확인하는 작업을 수행하시오 !
+          bmi30이 중요한 파생변수 인지 확인하시오 !
+
+def  func_1(x):
+    if  x >= 30:
+        return  1
+    else:
+        return  0 
+
+df['bmi30'] = df['bmi'].apply(func_1)
+df
+
+문제27.  비만이면서 흡연을 하는 사람에 대한 파생변수를 bmi30_smoker 라는 이름으로
+            추가하시오 ! 
+
+힌트 :  df['bmi30_smoker'] = df['bmi30']*df['smoker_yes']  ?  
+
+문제28. (오늘의 마지막 문제) 문제27번에서 선별된 독립변수들만 가지고 회귀모델을
+          생성하고 훈련시켜 나온 결정계수가 어떻게 되는지 확인하시오 !
+
+# 학습을 마친 모형에 test data를 적용하여 결정계수(R-제곱) 계산
+X = ?
+y = ?                                                5시 신호 보냈습니다. ~~~~~
+model.fit(X, y)                                    
+r_square = model.score(X, y)
+
+print(r_square)
+print('\n')
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
