@@ -1,0 +1,48 @@
+
+# 분석에 활용할 열(속성)을 선택 
+df_train2 = df_train[['survived', 'pclass', 'name', 'sex', 'age', 'sibsp', 'parch', 'fare', 'embarked']]
+print(df_train2.head())
+
+# 경칭 정리 (https://rfriend.tistory.com/448, https://blog.naver.com/wideeyed/221603778414 참고)
+df_train2['title'] = (df_train2.name.str.split(',').str[1]).str.split('.').str[0]    # expand=True 이면 여러개 컬럼으로 분할
+print(df_train2.title.unique())    
+
+
+# 원핫인코딩 - 범주형 데이터를 모형이 인식할 수 있도록 숫자형으로 변환
+onehot_sex = pd.get_dummies(df_train2['sex'], drop_first=True)
+df_train2 = pd.concat([df_train2, onehot_sex], axis=1)
+df_train2.head()
+
+
+onehot_embarked = pd.get_dummies(df_train2['embarked'], prefix='town', drop_first=True)
+df_train2 = pd.concat([df_train2, onehot_embarked], axis=1)
+df_train2.head()
+
+
+onehot_title = pd.get_dummies(df_train2['title'], prefix='title', drop_first=True)
+df_train2 = pd.concat([df_train2, onehot_title], axis=1)
+df_train2.head()
+
+onehot_title = pd.get_dummies(df_train2['pclass'], prefix='pclass', drop_first=True)
+df_train2 = pd.concat([df_train2, onehot_title], axis=1)
+df_train2.head()
+
+df_train2.drop(['name', 'title', 'sex', 'embarked', 'pclass'], axis=1, inplace=True)
+df_train2.head()
+
+
+X = df_train2[['sibsp', 'parch', 'male', 'town_Q', 'town_S', 'title_ Col', 'title_ Don', 'title_ Dr', 'title_ Jonkheer', 
+       'title_ Lady', 'title_ Major', 'title_ Master', 'title_ Miss', 'title_ Mlle', 'title_ Mme', 'title_ Mr', 'title_ Mrs', 'title_ Ms', 
+       'title_ Rev', 'title_ Sir', 'title_ the Countess', 'pclass_2', 'pclass_3']]    # 독립 변수 X (age, fare 정규화 후 합치기)
+X.head()
+
+
+# 설명 변수 age, fare 데이터 정규화(normalization)
+from sklearn import preprocessing
+X_s = df_train2[['age', 'fare']]
+X_s = preprocessing.StandardScaler().fit(X_s).transform(X_s)
+X_s = pd.DataFrame({'age_s': X_s[:, 0], 'fare_s': X_s[:, 1]})
+X_s
+
+result = pd.concat([X_s, X],axis=1)
+result
